@@ -1,0 +1,22 @@
+import pandas as pd
+import numpy as np
+
+from sys import argv as args
+
+raw_isoclassify_input = pd.read_csv(args[1])
+raw_isoclassify_output = pd.read_csv(args[2])
+
+
+broken_stars = raw_isoclassify_output[raw_isoclassify_output["iso_mass"] < 0.01][
+    "id_starname"
+]
+
+refined_isoclassify_input = raw_isoclassify_input[
+    np.isin(raw_isoclassify_input["id_starname"], broken_stars)
+]
+
+refined_isoclassify_input["gamag_err"] = 1
+refined_isoclassify_input["rpmag_err"] = 1
+refined_isoclassify_input["bpmag_err"] = 1
+
+refined_isoclassify_input.to_csv(args[3])

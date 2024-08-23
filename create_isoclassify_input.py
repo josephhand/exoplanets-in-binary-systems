@@ -1,0 +1,51 @@
+from sys import argv as args
+
+import pandas as pd
+import numpy as np
+
+sample = pd.read_csv(args[1])
+
+# Create star array with list of gaia_ids and params from catalog
+
+stars_in_sample = [f"star{i}" for i in range(len(sample) * 2)]
+
+star_data = pd.DataFrame(stars_in_sample, columns=("id_starname",))
+
+star_data["gaia_id"] = np.concatenate((sample["source_id1"], sample["source_id2"]))
+star_data["ra"] = np.concatenate((sample["ra1"], sample["ra2"]))
+star_data["dec"] = np.concatenate((sample["dec1"], sample["dec2"]))
+star_data["gamag"] = np.concatenate(
+    (sample["phot_g_mean_mag1"], sample["phot_g_mean_mag2"])
+)
+star_data["bpmag"] = np.concatenate(
+    (sample["phot_bp_mean_mag1"], sample["phot_bp_mean_mag2"])
+)
+star_data["rpmag"] = np.concatenate(
+    (sample["phot_rp_mean_mag1"], sample["phot_rp_mean_mag2"])
+)
+star_data["parallax"] = (
+    np.concatenate((sample["parallax1"], sample["parallax2"])) / 1000
+)
+star_data["parallax_err"] = (
+    np.concatenate((sample["parallax_error1"], sample["parallax_error2"])) / 1000
+)
+
+# Fix unrealistic values
+
+star_data.loc[star_data["gamag"] > 100, "gamag"] = np.nan
+star_data.loc[star_data["rpmag"] > 100, "rpmag"] = np.nan
+star_data.loc[star_data["bpmag"] > 100, "bpmag"] = np.nan
+
+star_data["gamag_err"] = 0.3
+star_data["bpmag_err"] = 0.3
+star_data["rpmag_err"] = 0.3
+
+# Add other parameters
+
+star_data["band"] = "gamag"
+star_data["dust"] = "allsky"
+star_data["grid"] = "mesa"
+
+# Output file
+
+star_data.to_csv(args[2])

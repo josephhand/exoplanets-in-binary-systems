@@ -1,0 +1,55 @@
+import pandas as pd
+import numpy as np
+import tqdm
+
+from sys import argv as args
+
+
+def do_sources_coincide(ra1_degrees, dec1_degrees, ra2_degrees, dec2_degrees):
+    angular_distance_degrees = np.sqrt(
+        (ra1_degrees - ra2_degrees) ** 2 + (dec1_degrees - dec2_degrees) ** 2
+    )
+    return angular_distance_degrees < 0.00003
+
+
+def search_for_exoplanets(system, all_exoplanets): 
+    exoplanets_in_system = do_sources_coincide(
+        system["ra1"], system["dec1"], all_exoplanets["ra"], all_exoplanets["dec"]
+    ) | do_sources_coincide(
+        system["ra2"], system["dec2"], all_exoplanets["ra"], all_exoplanets["dec"]
+    )
+    return tuple(all_exoplanets.loc[exoplanets_in_system, "pl_name"])
+
+
+def search_for_tois(system, all_tois):
+    tois_in_system = do_sources_coincide(
+        system["ra1"], system["dec1"], all_tois["ra"], all_tois["dec"]
+    ) | do_sources_coincide(
+        system["ra2"], system["dec2"], all_tois["ra"], all_tois["dec"]
+    )
+    return tuple(all_tois.loc[tois_in_system, "toi"])
+
+
+sample = pd.read_csv(args[1])
+all_exoplanets = pd.read_csv(args[2])
+all_tois = pd.read_csv(args[3])
+
+
+exoplanets_in_sample = []
+
+for system in tqdm.tqdm(sample.iloc, total=len(sample)):
+    exoplanets_in_system = search_for_exoplanets(system, all_exoplanets)
+    exoplanets_in_sample.append(exoplanets_in_system)
+
+sample["exoplanets"] = exoplanets_in_sample
+
+
+tois_in_sample = []
+
+for system in tqdm.tqdm(sample.iloc, total=len(sample)):
+    tois_in_system = search_for_tois(system, all_tois)
+    tois_in_sample.append(tois_in_system)
+
+sample["tois"] = tois_in_sample
+
+sample.to_csv(args[4])

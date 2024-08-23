@@ -1,0 +1,140 @@
+import pandas as pd
+import numpy as np
+import tqdm
+from scipy import constants as const
+
+from sys import argv as args
+
+from kpf_etc.etc import kpf_etc_rv
+
+systems = pd.read_csv(args[1])
+generated_planets = pd.read_csv(args[2])
+
+
+def sample_normal_distribution(mean, standard_devation):
+    return mean + np.random.normal() * standard_devation
+
+
+def calculate_radial_velocity_amplitude(system, star_num, planet):
+    star_mass_kg = (
+        sample_normal_distribution(
+            system[f"mass{star_num}"], system[f"mass_err{star_num}"]
+        )
+        * 2e30
+    )
+    planetary_orbit_inclination_degrees = sample_normal_distribution(
+        system["inclination"], system["inclination_err"]
+    ) + sample_normal_distribution(0, 20)
+    planet_mass_kg = planet["mass"] * 6e24
+    planet_period_seconds = planet["period"] * 3.16e7
+
+    radial_verocity_amplitude = (
+        planet_mass_kg
+        / star_mass_kg
+        * np.cbrt(
+            2
+            * np.pi
+            * const.G
+            * (planet_mass_kg + star_mass_kg)
+            / planet_period_seconds
+        )
+        * np.abs(np.sin(np.deg2rad(planetary_orbit_inclination_degrees)))
+    )
+    return radial_verocity_amplitude
+
+
+def calculate_transit_depth(system, star_num, planet):
+    star_radius_m = (
+        sample_normal_distribution(
+            system[f"rad{star_num}"], system[f"rad_err{star_num}"]
+        )
+        * 7e8
+    )
+    star_mass_kg = (
+        sample_normal_distribution(
+            system[f"mass{star_num}"], system[f"mass_err{star_num}"]
+        )
+        * 2e30
+    )
+    planet_radius_m = planet["radius"] * 6.4e6
+    planet_mass_kg = planet["mass"] * 6e24
+    planet_period_seconds = planet["period"] * 3.16e7
+    planetary_orbit_inclination_degrees = sample_normal_distribution(
+        system["inclination"], system["inclination_err"]
+    ) + sample_normal_distribution(0, 20)
+
+    semimajor_axis_m = np.cbrt(
+        (const.G * (star_mass_kg + planet_mass_kg) * planet_period_seconds**2)
+        / (4 * np.pi**2)
+    )
+    impact_fraction = (
+        semimajor_axis_m
+        * np.cos(np.deg2rad(planetary_orbit_inclination_degrees))
+        / star_radius_m
+    )
+
+    if np.abs(impact_fraction) > 1:
+        return 0
+
+    mu = np.sqrt(1 - impact_fraction**2)
+    limb_darkening_parameter = 0.7
+    transit_depth = (
+        (planet_radius_m / star_radius_m) ** 2
+        * (1 - limb_darkening_parameter + limb_darkening_parameter * mu)
+        / (1 - limb_darkening_parameter / 3)
+    )
+    return transit_depth
+
+def calculate_KPF_exposure_s(system, star_num, planet):
+    radial_velocity_amplitude_mps = calculate_radial_velocity_amplitude(system, star_num, planet)
+    desired_radial_velocity_sigma = radial_velocity_amplitude_mps/3
+    star_teff = system[f"teff{star_num}"]
+    star_g  = system[f"phot_g_mean_mag{star_num}"]
+    star_bp = system[f"phot_bp_mean_mag{star_num}"]
+    star_rp = system[f"phot_rp_mean_mag{star_num}"]
+    star_bprp = star_bp - star_rp
+    star_v = star_g - (-0.02704 + 0.01424*star_bprp - 0.2156*star_bprp**2 + 0.01426*star_bprp**3)
+
+    try:
+        exposure_time = kpf_etc_rv(star_teff, star_v, desired_radial_velocity_sigma)
+    except:
+        return 3600
+
+    return exposure_time
+
+
+
+data = []
+
+for i in tqdm.trange(50000):
+    system = systems.sample().iloc[0]
+    star_num = np.random.choice(["1", "2"])
+    planet = generated_planets.sample().iloc[0]
+    radial_velocity = calculate_radial_velocity_amplitude(system, star_num, planet)
+    transit_depth = calculate_transit_depth(system, star_num, planet)
+    kpf_exposure = calculate_KPF_exposure_s(system, star_num, planet)
+
+    data.append(
+        [
+            system[f"source_id{star_num}"],
+            system[f"mass{star_num}"],
+            system[f"phot_g_mean_mag{star_num}"],
+            planet["id"],
+            radial_velocity,
+            transit_depth,
+            kpf_exposure,
+        ]
+    )
+
+pd.DataFrame(
+    data,
+    columns=[
+        "source_id",
+        "star_mass",
+        "star_g_mag",
+        "planet_id",
+        "rv_K",
+        "transit_depth",
+        "kpf_exposure",
+    ],
+).to_csv(args[3])
