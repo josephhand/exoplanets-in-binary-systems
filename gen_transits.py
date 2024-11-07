@@ -1,0 +1,130 @@
+import pandas as pd
+import numpy as np
+import tqdm
+from scipy import constants as const
+
+from sys import argv as args
+
+from kpf_etc.etc import kpf_etc_rv
+
+systems = pd.read_csv(args[1])
+generated_planets = pd.read_csv(args[2])
+
+
+def sample_normal_distribution(mean, standard_devation):
+    return mean + np.random.normal() * standard_devation
+
+data = []
+
+for i in tqdm.trange(50000):
+    system = systems.sample().iloc[0]
+    star_num = np.random.choice(["1", "2"])
+    planet = generated_planets.sample().iloc[0]
+    star_radius_m = (
+        sample_normal_distribution(
+            system[f"rad{star_num}"], system[f"rad_err{star_num}"]
+        )
+        * 7e8
+    )
+    star_mass_kg = (
+        sample_normal_distribution(
+            system[f"mass{star_num}"], system[f"mass_err{star_num}"]
+        )
+        * 2e30
+    )
+    planet_radius_m = planet["radius"] * 6.4e6
+    planet_mass_kg = planet["mass"] * 6e24
+    planet_period_seconds = planet["period"] * 3.16e7
+
+    planetary_orbit_inclination_degrees = sample_normal_distribution(
+        system["inclination"], system["inclination_err"]
+    )
+
+    semimajor_axis_m = np.cbrt(
+        (const.G * (star_mass_kg + planet_mass_kg) * planet_period_seconds**2)
+        / (4 * np.pi**2)
+    )
+    impact_fraction = (
+        semimajor_axis_m
+        * np.cos(np.deg2rad(planetary_orbit_inclination_degrees))
+        / star_radius_m
+    )
+
+    transit_depth_perfect = 0
+
+    if np.abs(impact_fraction) < 1:
+
+        mu = np.sqrt(1 - impact_fraction**2)
+        limb_darkening_parameter = 0.7
+        transit_depth_perfect = (
+            (planet_radius_m / star_radius_m) ** 2
+            * (1 - limb_darkening_parameter + limb_darkening_parameter * mu)
+            / (1 - limb_darkening_parameter / 3)
+        )
+
+    planetary_orbit_inclination_degrees = sample_normal_distribution(
+        system["inclination"], system["inclination_err"]
+    ) + sample_normal_distribution(0, 20)
+
+    impact_fraction = (
+        semimajor_axis_m
+        * np.cos(np.deg2rad(planetary_orbit_inclination_degrees))
+        / star_radius_m
+    )
+
+    transit_depth_aligned = 0
+
+    if np.abs(impact_fraction) < 1:
+
+        mu = np.sqrt(1 - impact_fraction**2)
+        limb_darkening_parameter = 0.7
+        transit_depth_aligned = (
+            (planet_radius_m / star_radius_m) ** 2
+            * (1 - limb_darkening_parameter + limb_darkening_parameter * mu)
+            / (1 - limb_darkening_parameter / 3)
+        )
+
+    planetary_orbit_inclination_degrees = np.rad2deg(np.arcsin(np.random.uniform()))
+
+    impact_fraction = (
+        semimajor_axis_m
+        * np.cos(np.deg2rad(planetary_orbit_inclination_degrees))
+        / star_radius_m
+    )
+
+    transit_depth_random = 0
+
+    if np.abs(impact_fraction) < 1:
+
+        mu = np.sqrt(1 - impact_fraction**2)
+        limb_darkening_parameter = 0.7
+        transit_depth_random = (
+            (planet_radius_m / star_radius_m) ** 2
+            * (1 - limb_darkening_parameter + limb_darkening_parameter * mu)
+            / (1 - limb_darkening_parameter / 3)
+        )
+
+    data.append(
+        [
+            system[f"source_id{star_num}"],
+            system[f"mass{star_num}"],
+            system[f"phot_g_mean_mag{star_num}"],
+            planet["id"],
+            transit_depth_perfect,
+            transit_depth_aligned,
+            transit_depth_random,
+        ]
+    )
+
+pd.DataFrame(
+    data,
+    columns=[
+        "source_id",
+        "star_mass",
+        "star_g_mag",
+        "planet_id",
+        "transit_depth_perfect",
+        "transit_depth_aligned",
+        "transit_depth_random",
+    ],
+).to_csv(args[3])

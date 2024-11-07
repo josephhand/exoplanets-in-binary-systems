@@ -2,7 +2,6 @@ import numpy as np
 import sys
 from astropy.io import fits
 
-
 def calculate_gamma(
     ra,
     ra_companion,

@@ -1,0 +1,154 @@
+import pandas as pd
+import numpy as np
+import tqdm
+from scipy import constants as const
+
+from sys import argv as args
+
+from kpf_etc.etc import kpf_etc_rv
+
+systems = pd.read_csv(args[1])
+generated_planets = pd.read_csv(args[2])
+
+
+def sample_normal_distribution(mean, standard_devation):
+    return mean + np.random.normal() * standard_devation
+
+
+def calculate_radial_velocity_amplitude(system, star_num, planet):
+    star_mass_kg = (
+        sample_normal_distribution(
+            system[f"mass{star_num}"], system[f"mass_err{star_num}"]
+        )
+        * 2e30
+    )
+    planetary_orbit_inclination_degrees = sample_normal_distribution(
+        system["inclination"], system["inclination_err"]
+    ) + sample_normal_distribution(0, 20)
+    planet_mass_kg = planet["mass"] * 6e24
+    planet_period_seconds = planet["period"] * 3.16e7
+
+    radial_verocity_amplitude = (
+        planet_mass_kg
+        / star_mass_kg
+        * np.cbrt(
+            2
+            * np.pi
+            * const.G
+            * (planet_mass_kg + star_mass_kg)
+            / planet_period_seconds
+        )
+        * np.abs(np.sin(np.deg2rad(planetary_orbit_inclination_degrees)))
+    )
+    return radial_verocity_amplitude
+
+def calculate_KPF_exposure_s(system, star_num, planet):
+    radial_velocity_amplitude_mps = calculate_radial_velocity_amplitude(system, star_num, planet)
+    desired_radial_velocity_sigma = radial_velocity_amplitude_mps/3
+    star_teff = system[f"teff{star_num}"]
+    star_g  = system[f"phot_g_mean_mag{star_num}"]
+    star_bp = system[f"phot_bp_mean_mag{star_num}"]
+    star_rp = system[f"phot_rp_mean_mag{star_num}"]
+    star_bprp = star_bp - star_rp
+    star_v = star_g - (-0.02704 + 0.01424*star_bprp - 0.2156*star_bprp**2 + 0.01426*star_bprp**3)
+
+    try:
+        exposure_time = kpf_etc_rv(star_teff, star_v, desired_radial_velocity_sigma)
+    except:
+        return 3600
+
+    return exposure_time
+
+
+
+data = []
+
+for i in tqdm.trange(50000):
+    system = systems.sample().iloc[0]
+    star_num = np.random.choice(["1", "2"])
+    planet = generated_planets.sample().iloc[0]
+
+    star_mass_kg = (
+        sample_normal_distribution(
+            system[f"mass{star_num}"], system[f"mass_err{star_num}"]
+        )
+        * 2e30
+    )
+
+    planetary_orbit_inclination_degrees = sample_normal_distribution(
+        system["inclination"], system["inclination_err"]
+    )
+
+    planet_mass_kg = planet["mass"] * 6e24
+
+    planet_period_seconds = planet["period"] * 3.16e7
+
+    radial_velocity_perfect = (
+        planet_mass_kg
+        / star_mass_kg
+        * np.cbrt(
+            2
+            * np.pi
+            * const.G
+            * (planet_mass_kg + star_mass_kg)
+            / planet_period_seconds
+        )
+        * np.abs(np.sin(np.deg2rad(planetary_orbit_inclination_degrees)))
+    )
+
+    planetary_orbit_inclination_degrees = sample_normal_distribution(
+        system["inclination"], system["inclination_err"]
+    ) + sample_normal_distribution(0, 20)
+
+    radial_velocity_20deg_disp = (
+        planet_mass_kg
+        / star_mass_kg
+        * np.cbrt(
+            2
+            * np.pi
+            * const.G
+            * (planet_mass_kg + star_mass_kg)
+            / planet_period_seconds
+        )
+        * np.abs(np.sin(np.deg2rad(planetary_orbit_inclination_degrees)))
+    )
+
+    planetary_orbit_inclination_degrees = np.rad2deg(np.arcsin(np.random.uniform()))
+
+    radial_velocity_isotropic = (
+        planet_mass_kg
+        / star_mass_kg
+        * np.cbrt(
+            2
+            * np.pi
+            * const.G
+            * (planet_mass_kg + star_mass_kg)
+            / planet_period_seconds
+        )
+        * np.abs(np.sin(np.deg2rad(planetary_orbit_inclination_degrees)))
+    )
+
+    data.append(
+        [
+            system[f"source_id{star_num}"],
+            system[f"phot_g_mean_mag{star_num}"],
+            star_mass_kg,
+            planet_mass_kg,
+            radial_velocity_perfect,
+            radial_velocity_20deg_disp,
+            radial_velocity_isotropic,
+        ]
+    )
+
+pd.DataFrame(
+    data,
+    columns=[
+        "source_id",
+        "star_g_mag",
+        "star_mass",
+        "planet_mass",
+        "rv_K_perfect",
+        "rv_K_aligned",
+        "rv_K_random",
+    ],
+).to_csv(args[3])

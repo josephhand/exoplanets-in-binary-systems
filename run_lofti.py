@@ -31,6 +31,14 @@ teff_symmetric_uncertainty = np.max(
     np.abs([teff_upper_uncertainty, teff_lower_uncertainty]), axis=0
 )
 
+feh = np.array(isoclassify_results["iso_feh"])
+feh_upper_uncertainty = isoclassify_results["iso_feh_err1"]
+feh_lower_uncertainty = isoclassify_results["iso_feh_err2"]
+
+feh_symmetric_uncertainty = np.max(
+    np.abs([feh_upper_uncertainty, feh_lower_uncertainty]), axis=0
+)
+
 sample = pd.read_csv(args[2])
 
 sample["mass1"] = mass[: len(sample)]
@@ -50,6 +58,12 @@ sample["teff2"] = teff[len(sample) :]
 
 sample["teff_err1"] = teff_symmetric_uncertainty[: len(sample)]
 sample["teff_err2"] = teff_symmetric_uncertainty[len(sample) :]
+
+sample["feh1"] = feh[: len(sample)]
+sample["feh2"] = feh[len(sample) :]
+
+sample["feh_err1"] = feh_symmetric_uncertainty[: len(sample)]
+sample["feh_err2"] = feh_symmetric_uncertainty[len(sample) :]
 
 inclination_mean = []
 inclination_uncertainty = []

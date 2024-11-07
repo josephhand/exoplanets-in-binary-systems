@@ -1,5 +1,8 @@
 all: data/intermediates/random_planets.csv data/intermediates/generated_signals.csv
 
+data/intermediates/radial_velocities.csv: gen_radial_velocity.py data/intermediates/sample_with_inclination.csv data/intermediates/random_planets.csv
+	python gen_radial_velocity.py data/intermediates/sample_with_inclination.csv data/intermediates/random_planets.csv data/intermediates/radial_velocities.csv
+
 data/intermediates/generated_signals.csv: calculate_signals.py data/intermediates/sample_with_inclination.csv data/intermediates/random_planets.csv
 	python calculate_signals.py data/intermediates/sample_with_inclination.csv data/intermediates/random_planets.csv data/intermediates/generated_signals.csv
 
