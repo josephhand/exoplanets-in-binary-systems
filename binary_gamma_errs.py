@@ -2,6 +2,7 @@ import numpy as np
 import sys
 from astropy.io import fits
 
+
 def calculate_gamma(
     ra,
     ra_companion,
@@ -104,34 +105,25 @@ def draw_position_and_proper_motion(system, star_suffix):
     return sample
 
 
-def get_gamma(system, draw_count):
+def get_gamma(system):
 
-    gamma_draws = [0] * draw_count
+    ra_mean = system["ra%s" % ("1")]
+    dec_mean = system["dec%s" % ("1")]
+    proper_motion_ra_mean = system["pmra%s" % ("1")]
+    proper_motion_dec_mean = system["pmdec%s" % ("1")]
 
-    for n in range(0, draw_count):
+    cpn_ra_mean = system["ra%s" % ("2")]
+    cpn_dec_mean = system["dec%s" % ("2")]
+    cpn_proper_motion_ra_mean = system["pmra%s" % ("2")]
+    cpn_proper_motion_dec_mean = system["pmdec%s" % ("2")]
 
-        ra_primary, dec_primary, proper_motion_ra_primary, proper_motion_dec_primary = (
-            draw_position_and_proper_motion(system, star_suffix="1")
-        )
-
-        (
-            ra_companion,
-            dec_companion,
-            proper_motion_ra_comianion,
-            proper_motion_dec_companion,
-        ) = draw_position_and_proper_motion(system, star_suffix="2")
-
-        gamma_draws[n] = calculate_gamma(
-            ra_primary,
-            ra_companion,
-            dec_primary,
-            dec_companion,
-            proper_motion_ra_primary,
-            proper_motion_ra_comianion,
-            proper_motion_dec_primary,
-            proper_motion_dec_companion,
-        )
-
-    gamma_mean = np.mean(gamma_draws)
-    gamma_uncertainty = np.std(gamma_draws)
-    return gamma_mean, gamma_uncertainty
+    return calculate_gamma(
+        ra_mean,
+        cpn_ra_mean,
+        dec_mean,
+        cpn_dec_mean,
+        proper_motion_ra_mean,
+        cpn_proper_motion_ra_mean,
+        proper_motion_dec_mean,
+        cpn_proper_motion_dec_mean,
+    )

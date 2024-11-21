@@ -42,12 +42,24 @@ points = ax.scatter(
     norm=matplotlib.colors.LogNorm(
         vmin=angular_separation_mas.min(), vmax=angular_separation_mas.max()
     ),
-    s=(binary_star_sample["feh1"] * 400 + 12),
+    s=(binary_star_sample["feh1"] * 400 + 25),
     alpha=0.7,
     edgecolor="none",
 )
 
-handles, labels = points.legend_elements(prop='sizes', color = points.cmap(0.2), alpha=0.7, num=3, func=lambda x: (x-12)/400)
+xlims = ax.get_xlim()
+ylims = ax.get_ylim()
+
+ax.plot([-100, 1000], [-100, 1000], color='black', alpha=0.2)
+ax.text(750, 700, '1"')
+
+ax.plot([-100, 1000], [200, 200], color='black', alpha=0.2)
+ax.text(600, 210, '$200$au')
+
+ax.set_xlim(xlims)
+ax.set_ylim(ylims)
+
+handles, labels = points.legend_elements(prop='sizes', color = points.cmap(0.2), alpha=0.7, num=4, func=lambda x: (x-25)/400)
 legend = ax.legend(handles, labels, loc='lower right', title='Metallicity')
 
 ax.yaxis.set_major_locator(mpl.ticker.MultipleLocator(100))
@@ -81,7 +93,7 @@ ax.hist(transit_signals['transit_depth_perfect'], weights=[100/len(transit_signa
 ax.hist(transit_signals['transit_depth_aligned'], weights=[100/len(transit_signals)]*len(transit_signals), bins=np.logspace(-6, -1, 50), color=mpl.colormaps['Reds'](0.75), alpha=0.5, label=r'$20^\circ$ dispersion')
 ax.hist(transit_signals['transit_depth_random'], weights=[100/len(transit_signals)]*len(transit_signals), bins=np.logspace(-6, -1, 50), color=mpl.colormaps['Greys'](0.75), alpha=0.5, label='Isotropic')
 
-ax.set_ylabel('Fraction of All Exoplanets (%)')
+ax.set_ylabel('% Transiting')
 ax.set_xlabel('Transit Depth')
 ax.set_xscale('log')
 
@@ -92,29 +104,6 @@ ax.legend()
 transit_plot.tight_layout()
 
 transit_plot.savefig("figures/transit_plot.pdf")
-
-# Gamma Inclination Plot
-
-inclination_plot = plt.figure(figsize=(doc_line_width, 3))
-
-ax = inclination_plot.gca()
-
-ax.errorbar(binary_star_sample['gamma'], binary_star_sample['inclination'], xerr=binary_star_sample['gamma_err'], yerr=binary_star_sample['inclination_err'], fmt='.', color='red', ms=2, elinewidth=0.5, alpha=0.2)
-
-ax.set_xlabel(r'Gamma ($^\circ$)')
-ax.set_ylabel(r'Inclination ($^\circ$)')
-
-ax.xaxis.set_major_locator(mpl.ticker.MultipleLocator(60))
-ax.xaxis.set_minor_locator(mpl.ticker.MultipleLocator(10))
-
-ax.yaxis.set_major_locator(mpl.ticker.MultipleLocator(30))
-ax.yaxis.set_minor_locator(mpl.ticker.MultipleLocator(10))
-
-ax.tick_params(which='both', direction='in', top=True, right=True)
-
-inclination_plot.tight_layout()
-
-inclination_plot.savefig('figures/inclination_plot.pdf')
 
 # Radial Velocity Plot
 
@@ -128,7 +117,7 @@ ax = rad_vel_plot.add_subplot(gs[0])
 
 cb = rad_vel_plot.add_subplot(gs[1])
 
-xbins = np.linspace(0, 1.5, 100)
+xbins = np.linspace(0.5, 2, 100)
 ybins = np.logspace(-2, 2, 100)
 
 counts_random, _, _ = np.histogram2d(rad_vel_data['star_mass']/2e30, rad_vel_data['rv_K_random'], bins=[xbins,ybins])
@@ -163,7 +152,7 @@ cb.imshow(np.swapaxes(colors, 0, 1), origin='lower', aspect='auto', interpolatio
 cb.yaxis.set_label_position('right')
 cb.set_ylabel('Model population density')
 
-ax.set_xlim(0, 1.5)
+ax.set_xlim(0.5, 2)
 ax.set_ylim(0.01, 100)
 ax.set_yscale('log')
 
@@ -180,3 +169,17 @@ ax.legend()
 cb.tick_params(which='both', direction='out', left=False, bottom=False, right=True, labelleft=False, labelright=True, labelbottom=False)
 
 rad_vel_plot.savefig('figures/rv_plot.pdf')
+
+# Inclination plot
+
+inc_plot = plt.figure(figsize=(doc_line_width, 8))
+
+ax = inc_plot.gca()
+
+ax.errorbar(binary_star_sample['inclination'], range(len(binary_star_sample)), xerr=binary_star_sample['inclination_err'])
+
+inc_plot.tight_layout()
+
+inc_plot.savefig("figures/inclination_plot.pdf")
+
+

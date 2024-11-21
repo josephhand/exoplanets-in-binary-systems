@@ -91,7 +91,7 @@ for system in tqdm.tqdm(sample.iloc, total=len(sample)):
         secondary_star_gaia_id,
         primary_star_mass,
         secondary_star_mass,
-        Norbits=1000,
+        Norbits=200,
     )
 
     lofti_fitter.results_filename = f"{args[3]}/{primary_star_gaia_id}_results"
@@ -118,7 +118,7 @@ sample["inclination_err"] = inclination_uncertainty
 sample["semimajor_axis"] = semimajor_axis_mean
 sample["semimajor_axis_err"] = semimajor_axis_uncertainty
 
-well_aligned_systems = (sample["inclination"] - 90) < sample["inclination_err"]
+well_aligned_systems = np.abs(sample["inclination"] - 90) < sample["inclination_err"]
 
 
 sample = sample[well_aligned_systems].copy()
