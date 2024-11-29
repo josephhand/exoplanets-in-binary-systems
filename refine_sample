@@ -1,3 +1,5 @@
+#!/bin/env python
+
 from sys import argv as args
 
 import pickle as pkl
@@ -25,7 +27,7 @@ sample['inclination_err'] = inclination_err
 sample['inclination_lower'] = inclination_lower
 sample['inclination_upper'] = inclination_upper
 
-well_aligned_systems = np.abs(sample['inclination'] - 90) < sample['inclination_err']
+well_aligned_systems = np.abs(sample['inclination'] - 40) < sample['inclination_err']
 
 sample = sample[well_aligned_systems].copy()
 

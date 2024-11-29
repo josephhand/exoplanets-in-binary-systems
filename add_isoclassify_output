@@ -1,3 +1,5 @@
+#!/bin/env python
+
 from sys import argv as args
 import pandas as pd
 import numpy as np

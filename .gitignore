@@ -1,3 +1,4 @@
 data
-figures
+figures/old
+figures/*.pdf
 __pycache__

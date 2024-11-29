@@ -1,0 +1,88 @@
+#!/bin/env python
+
+import pandas as pd
+import scipy
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+import matplotlib
+import colour
+
+from pathlib import Path
+
+Path("figures").mkdir(exist_ok=True)
+
+SMALL_SIZE = 6
+MEDIUM_SIZE = 8
+BIGGER_SIZE = 10
+
+plt.rcParams.update({
+    'text.usetex': True
+})
+
+plt.rc('font', size=MEDIUM_SIZE)          # controls default text sizes
+plt.rc('axes', titlesize=BIGGER_SIZE)     # fontsize of the axes title
+plt.rc('axes', labelsize=MEDIUM_SIZE)    # fontsize of the x and y labels
+plt.rc('xtick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+plt.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+plt.rc('legend', fontsize=MEDIUM_SIZE)    # legend fontsize
+plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+
+doc_line_width = 3.35289  # in
+doc_text_width = 7.01014
+
+binary_star_sample = pd.read_csv("../data/intermediates/sample_with_inclination.csv")
+distance_pc = 1000 / binary_star_sample["parallax1"]
+sky_projected_separation_au = binary_star_sample["sep_AU"]
+angular_separation_mas = sky_projected_separation_au / distance_pc
+
+separation_plot = plt.figure(figsize=(doc_text_width, 3))
+ax = separation_plot.gca()
+
+points = ax.scatter(
+    distance_pc,
+    sky_projected_separation_au,
+    c=angular_separation_mas,
+    norm=matplotlib.colors.LogNorm(
+        vmin=angular_separation_mas.min(), vmax=angular_separation_mas.max()
+    ),
+    s=(binary_star_sample["feh1"] * 400 + 25),
+    alpha=0.7,
+    edgecolor="none",
+)
+
+xlims = ax.get_xlim()
+ylims = ax.get_ylim()
+
+ax.plot([-100, 1000], [-100, 1000], color='black', alpha=0.2)
+ax.text(750, 700, '1"')
+
+ax.plot([-100, 1000], [200, 200], color='black', alpha=0.2)
+ax.text(600, 210, '$200$au')
+
+ax.set_xlim(xlims)
+ax.set_ylim(ylims)
+
+handles, labels = points.legend_elements(prop='sizes', color = points.cmap(0.2), alpha=0.7, num=4, func=lambda x: (x-25)/400)
+legend = ax.legend(handles, labels, loc='lower right', title='Metallicity')
+
+ax.yaxis.set_major_locator(mpl.ticker.MultipleLocator(100))
+ax.yaxis.set_minor_locator(mpl.ticker.MultipleLocator(50))
+
+ax.xaxis.set_major_locator(mpl.ticker.MultipleLocator(100))
+ax.xaxis.set_minor_locator(mpl.ticker.MultipleLocator(25))
+
+ax.tick_params(which='both', direction='in', top=True, right=True)
+
+ax.set_xlabel("Distance (pc)")
+ax.set_ylabel("Sky-Projected Separation (AU)")
+
+colorbar = separation_plot.colorbar(points, ax=ax, ticks=[1, 3, 10])
+colorbar.ax.set_yticklabels(['1', '3', '10'])
+
+colorbar.set_label("Angular Separation ('')")
+
+separation_plot.tight_layout()
+
+separation_plot.savefig("sample_plot.pdf")
+

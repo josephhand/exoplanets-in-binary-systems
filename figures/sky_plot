@@ -1,0 +1,69 @@
+#!/bin/env python
+
+import pandas as pd
+import scipy
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+import matplotlib
+import colour
+
+from pathlib import Path
+
+Path("figures").mkdir(exist_ok=True)
+
+SMALL_SIZE = 6
+MEDIUM_SIZE = 8
+BIGGER_SIZE = 10
+
+plt.rcParams.update({
+    'text.usetex': True
+})
+
+plt.rc('font', size=MEDIUM_SIZE)          # controls default text sizes
+plt.rc('axes', titlesize=BIGGER_SIZE)     # fontsize of the axes title
+plt.rc('axes', labelsize=MEDIUM_SIZE)    # fontsize of the x and y labels
+plt.rc('xtick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+plt.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+plt.rc('legend', fontsize=MEDIUM_SIZE)    # legend fontsize
+plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+
+doc_line_width = 3.35289  # in
+doc_text_width = 7.01014
+
+binary_star_sample = pd.read_csv("../data/intermediates/sample_with_inclination.csv")
+
+mollweide_plot = plt.figure(figsize=(doc_line_width, 1.7))
+
+ax = mollweide_plot.add_subplot(111, projection='mollweide')
+
+ras = binary_star_sample['ra1']
+ras[ras > 180] = ras[ras > 180] - 360
+
+ax.grid(linewidth = 0.25, zorder=-5)
+
+distance_pc = 1000/binary_star_sample["parallax1"]
+
+points = ax.scatter(np.deg2rad(ras), np.deg2rad(binary_star_sample['dec1']), s=4, c=distance_pc, cmap='plasma', edgecolor="none", alpha=0.7)
+
+cb = mollweide_plot.colorbar(points)
+cb.set_label("Distance (pc)")
+
+ax.set_ylabel('Declination')
+ax.set_xlabel('Right Ascension')
+
+ax.set_xticks(np.deg2rad([-120, -60, 0, 60, 120]))
+ax.set_yticks(np.deg2rad([-75, -60, -30, 0, 30, 60, 75]))
+ax.set_yticklabels(["", r"-60\textdegree", r"-30\textdegree", r"0\textdegree", r"30\textdegree", r"60\textdegree", ""])
+
+ax.yaxis.set_minor_locator(mpl.ticker.MultipleLocator(np.deg2rad(10)))
+ax.xaxis.set_minor_locator(mpl.ticker.MultipleLocator(np.deg2rad(20)))
+
+ax.tick_params(labeltop=False)
+
+for label in ax.get_xticklabels():
+    label.set_bbox(dict(pad=1, facecolor='white', edgecolor='none', alpha=0.5))
+
+mollweide_plot.tight_layout()
+
+mollweide_plot.savefig("sky_plot.pdf")

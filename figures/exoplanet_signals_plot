@@ -1,0 +1,112 @@
+#!/bin/env python
+
+import pandas as pd
+import scipy
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+import matplotlib
+import colour
+
+from pathlib import Path
+
+Path("figures").mkdir(exist_ok=True)
+
+SMALL_SIZE = 6
+MEDIUM_SIZE = 8
+BIGGER_SIZE = 10
+
+plt.rcParams.update({
+    'text.usetex': True
+})
+
+plt.rc('font', size=MEDIUM_SIZE)          # controls default text sizes
+plt.rc('axes', titlesize=BIGGER_SIZE)     # fontsize of the axes title
+plt.rc('axes', labelsize=MEDIUM_SIZE)    # fontsize of the x and y labels
+plt.rc('xtick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+plt.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+plt.rc('legend', fontsize=MEDIUM_SIZE)    # legend fontsize
+plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+
+doc_line_width = 3.35289  # in
+doc_text_width = 7.01014
+
+rad_vel_data = pd.read_csv('../data/intermediates/radial_velocities.csv')
+transit_signals = pd.read_csv("../data/intermediates/transits.csv")
+
+exo_signal_plot = plt.figure(figsize=(doc_text_width, 2), constrained_layout=True)
+
+gs = mpl.gridspec.GridSpec(1, 3, exo_signal_plot, width_ratios=[1,0.05,1.05])
+
+ax = exo_signal_plot.add_subplot(gs[0])
+
+cb = exo_signal_plot.add_subplot(gs[1])
+
+xbins = np.linspace(0.5, 2, 100)
+ybins = np.logspace(-2, 1, 100)
+
+counts_random, _, _ = np.histogram2d(rad_vel_data['star_mass']/2e30, rad_vel_data['rv_K_random'], bins=[xbins,ybins])
+
+counts_random = scipy.ndimage.gaussian_filter(counts_random, 3)
+
+counts_aligned, _, _ = np.histogram2d(rad_vel_data['star_mass']/2e30, rad_vel_data['rv_K_perfect'], bins=[xbins,ybins])
+
+counts_aligned = scipy.ndimage.gaussian_filter(counts_aligned, 3)
+
+norm = mpl.colors.Normalize(vmin=np.min([counts_random, counts_aligned]), vmax=np.max([counts_random, counts_aligned]))
+
+levels = np.linspace(norm.vmin, norm.vmax, 8)
+
+contours_rand = ax.contour(xbins[1:], ybins[1:], counts_random.transpose(), extent=[xbins.min(), xbins.max(), ybins.min(), ybins.max()], cmap='Reds', norm=norm, alpha=0.5, label='Random inclinations', levels=levels)
+
+contours_aligned = ax.contour(xbins[1:], ybins[1:], counts_aligned.transpose(), extent=[xbins.min(), xbins.max(), ybins.min(), ybins.max()], cmap='Blues', norm=norm, alpha=0.5, label='Aligned with host stars', levels=levels)
+
+perfect_mean, _, _ = scipy.stats.binned_statistic(rad_vel_data['star_mass']/2e30, rad_vel_data['rv_K_perfect'], bins=xbins)
+
+realistic_mean, _, _ = scipy.stats.binned_statistic(rad_vel_data['star_mass']/2e30, rad_vel_data['rv_K_aligned'], bins=xbins)
+
+random_mean, _, _ = scipy.stats.binned_statistic(rad_vel_data['star_mass']/2e30, rad_vel_data['rv_K_random'], bins=xbins)
+
+ax.plot(xbins[1:], perfect_mean, c=mpl.colormaps['Blues'](0.75), label='Aligned')
+ax.plot(xbins[1:], realistic_mean, c=mpl.colormaps['Greys'](0.75), label=r'$\pm20^\circ$ Dispersion')
+ax.plot(xbins[1:], random_mean, c=mpl.colormaps['Reds'](0.75), label='Isotropic')
+
+idxs = np.linspace(0, 1, 256)
+colors = np.array((mpl.colormaps['Blues'](idxs), mpl.colormaps['Reds'](idxs)))
+cb.imshow(np.swapaxes(colors, 0, 1), origin='lower', aspect='auto', interpolation='none', extent=[0, 1, norm.vmin, norm.vmax], alpha=0.5)
+cb.yaxis.set_label_position('right')
+cb.set_ylabel('Model population density')
+
+ax.set_xlim(0.5, 2)
+ax.set_ylim(0.01, 10)
+ax.set_yscale('log')
+
+ax.set_xlabel(r'Star Mass ($M_\odot$)')
+ax.set_ylabel(r'Expected RV (m/s)')
+
+ax.xaxis.set_major_locator(mpl.ticker.MultipleLocator(0.5))
+ax.xaxis.set_minor_locator(mpl.ticker.MultipleLocator(0.1))
+
+ax.tick_params(which='both', direction='in', top=True, right=True)
+
+ax.legend(loc='lower left')
+
+cb.tick_params(which='both', direction='out', left=False, bottom=False, right=True, labelleft=False, labelright=True, labelbottom=False)
+
+ax = exo_signal_plot.add_subplot(gs[2])
+
+ax.hist(transit_signals['transit_depth_perfect'], weights=[100/len(transit_signals)]*len(transit_signals), bins=np.logspace(-6, -2, 50), color=mpl.colormaps['Blues'](0.75), alpha=0.5, label='Aligned')
+ax.hist(transit_signals['transit_depth_aligned'], weights=[100/len(transit_signals)]*len(transit_signals), bins=np.logspace(-6, -2, 50), color=mpl.colormaps['Greys'](0.75), alpha=0.5, label=r'$20^\circ$ dispersion')
+ax.hist(transit_signals['transit_depth_random'], weights=[100/len(transit_signals)]*len(transit_signals), bins=np.logspace(-6, -2, 50), color=mpl.colormaps['Reds'](0.75), alpha=0.5, label='Isotropic')
+
+ax.set_ylabel(r'\% Transiting')
+ax.set_xlabel('Transit Depth')
+ax.set_xscale('log')
+
+ax.yaxis.set_minor_locator(mpl.ticker.MultipleLocator(0.05))
+
+ax.tick_params(which='both', direction='in', top=True, right=True)
+
+ax.legend()
+
+exo_signal_plot.savefig("exoplanet_signals_plot.pdf", bbox_inches="tight")

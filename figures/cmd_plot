@@ -1,0 +1,101 @@
+#!/bin/env python
+
+import pandas as pd
+import scipy
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+import matplotlib
+import colour
+
+from pathlib import Path
+
+Path("figures").mkdir(exist_ok=True)
+
+SMALL_SIZE = 6
+MEDIUM_SIZE = 8
+BIGGER_SIZE = 10
+
+plt.rcParams.update({
+    'text.usetex': True
+})
+
+plt.rc('font', size=MEDIUM_SIZE)          # controls default text sizes
+plt.rc('axes', titlesize=BIGGER_SIZE)     # fontsize of the axes title
+plt.rc('axes', labelsize=MEDIUM_SIZE)    # fontsize of the x and y labels
+plt.rc('xtick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+plt.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+plt.rc('legend', fontsize=MEDIUM_SIZE)    # legend fontsize
+plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+
+doc_line_width = 3.35289  # in
+doc_text_width = 7.01014
+
+catalog = pd.read_csv("../data/intermediates/catalog_with_gammas.csv")
+binary_star_sample = pd.read_csv("../data/intermediates/sample_with_inclination.csv")
+
+gamag = np.concatenate(
+    (catalog["phot_g_mean_mag1"], catalog["phot_g_mean_mag2"])
+)
+bpmag = np.concatenate(
+    (catalog["phot_bp_mean_mag1"], catalog["phot_bp_mean_mag2"])
+)
+rpmag = np.concatenate(
+    (catalog["phot_rp_mean_mag1"], catalog["phot_rp_mean_mag2"])
+)
+parallax = np.concatenate(
+    (catalog["parallax1"], catalog["parallax2"])
+)
+
+filter = (bpmag < 100) & (rpmag < 100)
+
+bp_rp = bpmag - rpmag
+abs_gamag = gamag - 5*np.log10(100/parallax)
+
+cmd_plot = plt.figure(figsize=(doc_line_width, 2.5))
+
+ax = cmd_plot.gca()
+
+data, xbins, ybins = np.histogram2d(bp_rp[filter], abs_gamag[filter], bins=(np.linspace(-1, 5, 500), np.linspace(-5, 18, 500)))
+
+img = ax.imshow(data.T, interpolation='none', norm='log', aspect='auto', extent=(np.min(xbins), np.max(xbins), np.max(ybins), np.min(ybins)))
+
+cb = cmd_plot.colorbar(img)
+cb.set_label("System Count")
+
+gamag = np.concatenate(
+    (binary_star_sample["phot_g_mean_mag1"], binary_star_sample["phot_g_mean_mag2"])
+)
+bpmag = np.concatenate(
+    (binary_star_sample["phot_bp_mean_mag1"], binary_star_sample["phot_bp_mean_mag2"])
+)
+rpmag = np.concatenate(
+    (binary_star_sample["phot_rp_mean_mag1"], binary_star_sample["phot_rp_mean_mag2"])
+)
+parallax = np.concatenate(
+    (binary_star_sample["parallax1"], binary_star_sample["parallax2"])
+)
+
+filter = (bpmag < 100) & (rpmag < 100)
+
+bp_rp = bpmag - rpmag
+abs_gamag = gamag - 5*np.log10(100/parallax)
+
+ax.scatter(bp_rp[filter][:1000], abs_gamag[filter][:1000], edgecolors=mpl.colormaps['Oranges'](0.75), linewidths=0.5, s=2, alpha=0.7, c='none', label='Vetted Sample')
+ax.legend(loc='upper right')
+
+
+ax.yaxis.set_major_locator(mpl.ticker.MultipleLocator(5))
+ax.yaxis.set_minor_locator(mpl.ticker.MultipleLocator(1))
+
+ax.xaxis.set_major_locator(mpl.ticker.MultipleLocator(2))
+ax.xaxis.set_minor_locator(mpl.ticker.MultipleLocator(0.5))
+
+ax.tick_params(which='both', direction='in', top=True, right=True)
+
+ax.set_xlabel("BP-RP (mag)")
+ax.set_ylabel("Abs. G Mag")
+
+cmd_plot.tight_layout()
+
+cmd_plot.savefig('cmd_plot.pdf')
