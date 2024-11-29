@@ -51,6 +51,7 @@ for i in tqdm.trange(50000):
     )
 
     transit_depth_perfect = 0
+    transit_duration_perfect = 0
 
     if np.abs(impact_fraction) < 1:
 
@@ -61,6 +62,7 @@ for i in tqdm.trange(50000):
             * (1 - limb_darkening_parameter + limb_darkening_parameter * mu)
             / (1 - limb_darkening_parameter / 3)
         )
+        transit_duration_perfect = mu * planet_period_seconds * star_radius_m / (semimajor_axis_m * np.pi)
 
     planetary_orbit_inclination_degrees = sample_normal_distribution(
         system["inclination"], system["inclination_err"]
@@ -73,6 +75,7 @@ for i in tqdm.trange(50000):
     )
 
     transit_depth_aligned = 0
+    transit_duration_aligned = 0
 
     if np.abs(impact_fraction) < 1:
 
@@ -83,6 +86,7 @@ for i in tqdm.trange(50000):
             * (1 - limb_darkening_parameter + limb_darkening_parameter * mu)
             / (1 - limb_darkening_parameter / 3)
         )
+        transit_duration_aligned = mu * planet_period_seconds * star_radius_m / (semimajor_axis_m * np.pi)
 
     planetary_orbit_inclination_degrees = np.rad2deg(np.arcsin(np.random.uniform()))
 
@@ -93,6 +97,7 @@ for i in tqdm.trange(50000):
     )
 
     transit_depth_random = 0
+    transit_duration_random = 0
 
     if np.abs(impact_fraction) < 1:
 
@@ -103,6 +108,7 @@ for i in tqdm.trange(50000):
             * (1 - limb_darkening_parameter + limb_darkening_parameter * mu)
             / (1 - limb_darkening_parameter / 3)
         )
+        transit_duration_random = mu * planet_period_seconds * star_radius_m / (semimajor_axis_m * np.pi)
 
     data.append(
         [
@@ -113,6 +119,9 @@ for i in tqdm.trange(50000):
             transit_depth_perfect,
             transit_depth_aligned,
             transit_depth_random,
+            transit_duration_perfect,
+            transit_duration_aligned,
+            transit_duration_random,
         ]
     )
 
@@ -126,5 +135,9 @@ pd.DataFrame(
         "transit_depth_perfect",
         "transit_depth_aligned",
         "transit_depth_random",
+        "transit_duration_perfect",
+        "transit_duration_aligned",
+        "transit_duration_random"
+
     ],
 ).to_csv(args[3])

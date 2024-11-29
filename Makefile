@@ -1,39 +1,45 @@
+ddir = data
+idir = $(ddir)/intermediates
+
 all: data figures
 
-data: data/intermediates/random_planets.csv data/intermediates/transits.csv data/intermediates/radial_velocities.csv
-
-figures: make_figures.py data/intermediates/transits.csv data/intermediates/radial_velocities.csv data/intermediates/sample_with_inclination.csv
+figures: data make_figures.py
 	python make_figures.py
 
-data/intermediates/transits.csv: gen_transits.py data/intermediates/sample_with_inclination.csv data/intermediates/random_planets.csv
-	python gen_transits.py data/intermediates/sample_with_inclination.csv data/intermediates/random_planets.csv data/intermediates/transits.csv
+data: $(idir)/random_planets.csv $(idir)/transits.csv $(idir)/radial_velocities.csv
 
-data/intermediates/radial_velocities.csv: gen_radial_velocity.py data/intermediates/sample_with_inclination.csv data/intermediates/random_planets.csv
-	python gen_radial_velocity.py data/intermediates/sample_with_inclination.csv data/intermediates/random_planets.csv data/intermediates/radial_velocities.csv
+$(idir)/transits.csv: gen_transits.py $(idir)/sample_with_inclination.csv $(idir)/random_planets.csv
+	python gen_transits.py $(idir)/sample_with_inclination.csv $(idir)/random_planets.csv $(idir)/transits.csv
 
-# data/intermediates/generated_signals.csv: calculate_signals.py data/intermediates/sample_with_inclination.csv data/intermediates/random_planets.csv
-# 	python calculate_signals.py data/intermediates/sample_with_inclination.csv data/intermediates/random_planets.csv data/intermediates/generated_signals.csv
+$(idir)/radial_velocities.csv: gen_radial_velocity.py $(idir)/sample_with_inclination.csv $(idir)/random_planets.csv
+	python gen_radial_velocity.py $(idir)/sample_with_inclination.csv $(idir)/random_planets.csv $(idir)/radial_velocities.csv
 
-data/intermediates/random_planets.csv: generate_random_exoplanets.py
-	python generate_random_exoplanets.py data/intermediates/random_planets.csv
+$(idir)/random_planets.csv: generate_random_exoplanets.py
+	python generate_random_exoplanets.py $(idir)/random_planets.csv
 
-data/intermediates/sample_with_inclination.csv: run_lofti.py data/intermediates/isoclassify_output.csv data/intermediates/sample_with_exoplanets.csv
-	python run_lofti.py data/intermediates/isoclassify_output.csv data/intermediates/sample_with_exoplanets.csv data/intermediates/lofti data/intermediates/sample_with_inclination.csv
+$(idir)/sample_with_inclination.csv: refine_sample.py $(idir)/sample_with_masses.csv $(idir)/lofti.lock
+	python refine_sample.py $(idir)/sample_with_masses.csv $(idir)/lofti $(idir)/sample_with_inclination.csv
 
-data/intermediates/isoclassify_output.csv: run_isoclassify.sh data/intermediates/sample_with_exoplanets.csv
-	bash run_isoclassify.sh data/intermediates/sample_with_exoplanets.csv data/intermediates/isoclassify_input.csv data/intermediates/isoclassify_output.csv
+$(idir)/lofti.lock: run_lofti.sh run_lofti.py $(idir)/sample_with_masses.csv
+	./run_lofti.sh $(idir)/sample_with_masses.csv $(idir)/lofti $(idir)/lofti.lock
 
-data/intermediates/sample_with_exoplanets.csv: find_exoplanets.py data/intermediates/sample.csv data/intermediates/nea_exoplanets.csv data/intermediates/nea_tois.csv
-	python find_exoplanets.py data/intermediates/sample.csv data/intermediates/nea_exoplanets.csv data/intermediates/nea_tois.csv data/intermediates/sample_with_exoplanets.csv
+$(idir)/sample_with_masses.csv: add_isoclassify_output.py $(idir)/sample_with_exoplanets.csv $(idir)/isoclassify_output.csv
+	python add_isoclassify_output.py $(idir)/sample_with_exoplanets.csv $(idir)/isoclassify_output.csv $(idir)/sample_with_masses.csv
 
-data/intermediates/nea_exoplanets.csv: filter_csv.sh data/NEA.csv
-	sh filter_csv.sh data/NEA.csv data/intermediates/nea_exoplanets.csv
+$(idir)/isoclassify_output.csv: run_isoclassify.sh $(idir)/sample_with_exoplanets.csv
+	bash run_isoclassify.sh $(idir)/sample_with_exoplanets.csv $(idir)/isoclassify_input.csv $(idir)/isoclassify_output.csv
 
-data/intermediates/nea_tois.csv: filter_csv.sh data/TOIS.csv
-	sh filter_csv.sh data/TOIS.csv data/intermediates/nea_tois.csv
+$(idir)/sample_with_exoplanets.csv: find_exoplanets.py $(idir)/sample.csv $(idir)/nea_exoplanets.csv $(idir)/nea_tois.csv
+	python find_exoplanets.py $(idir)/sample.csv $(idir)/nea_exoplanets.csv $(idir)/nea_tois.csv $(idir)/sample_with_exoplanets.csv
 
-data/intermediates/sample.csv: select_sample.py data/intermediates/catalog_with_gammas.csv
-	python select_sample.py data/intermediates/catalog_with_gammas.csv data/intermediates/sample.csv
+$(idir)/nea_exoplanets.csv: filter_csv.sh data/NEA.csv
+	sh filter_csv.sh $(ddir)/NEA.csv $(idir)/nea_exoplanets.csv
 
-data/intermediates/catalog_with_gammas.csv: calculate_gammas.py binary_gamma_errs.py data/all_columns_catalog.fits.gz
-	python calculate_gammas.py data/all_columns_catalog.fits.gz data/intermediates/catalog_with_gammas.csv
+$(idir)/nea_tois.csv: filter_csv.sh data/TOIS.csv
+	sh filter_csv.sh $(ddir)/TOIS.csv $(idir)/nea_tois.csv
+
+$(idir)/sample.csv: select_sample.py $(idir)/catalog_with_gammas.csv
+	python select_sample.py $(idir)/catalog_with_gammas.csv $(idir)/sample.csv
+
+$(idir)/catalog_with_gammas.csv: calculate_gammas.py binary_gamma_errs.py data/all_columns_catalog.fits.gz
+	python calculate_gammas.py $(ddir)/all_columns_catalog.fits.gz $(idir)/catalog_with_gammas.csv
